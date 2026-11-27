@@ -1,9 +1,12 @@
 <script lang="ts">
+  import { tick } from 'svelte'
+  import ModuleIcon from './ModuleIcon.svelte'
+  import MarkdownOutput from './MarkdownOutput.svelte'
   import { tools, type Tool } from './catalog'
   import { guides } from './guides'
   import { runTool, type Output } from './tools'
+  import { countText } from './wordcount'
 
-  const categories = [...new Set(tools.map(tool => tool.category))]
   const drafts = new Map<string, { input: string; secondary: string; option: number }>()
   let selected = $state(tools[0])
   let input = $state('')
@@ -14,10 +17,10 @@
   let status = $state('')
   let pending = $state(false)
   let search = $state('')
-  let guideDialog: HTMLDialogElement
-  let navigationOpen = $state(true)
-  let closedGroups = $state<string[]>([])
+  let guideDialog = $state<HTMLDialogElement>()
+  let showModules = $state(true)
   let query = $derived(search.trim().toLowerCase())
+  let wordCounts = $derived(selected.id === 'wordcount' ? countText(input) : undefined)
   type Theme = 'light' | 'dark'
   const themeKey = 'hubbykit.theme'
   let theme = $state<Theme>(initialTheme())
@@ -57,10 +60,17 @@
     status = ''
   }
 
-  function toggleGroup(category: string) {
-    closedGroups = closedGroups.includes(category)
-      ? closedGroups.filter(group => group !== category)
-      : [...closedGroups, category]
+  async function openModule(tool: Tool) {
+    select(tool)
+    showModules = false
+    await tick()
+    document.getElementById('tool-title')?.focus()
+  }
+
+  async function backToModules() {
+    showModules = true
+    await tick()
+    document.getElementById('module-' + selected.id)?.focus()
   }
 
   function select(tool: Tool) {
@@ -112,96 +122,65 @@
   }
 
   function shortcut(event: KeyboardEvent) {
-    if (guideDialog?.open) return
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-      event.preventDefault()
-      if (!pending) void run(0)
+    if (!selected.actions.length) return
+    if (event.key !== 'Enter' || event.isComposing || event.altKey || event.shiftKey) return
+    const field = event.currentTarget
+    if (event.ctrlKey || event.metaKey) {
+      if (field instanceof HTMLTextAreaElement) {
+        event.preventDefault()
+        field.setRangeText('\n', field.selectionStart, field.selectionEnd, 'end')
+        if (field.id === 'source') input = field.value
+        else secondary = field.value
+        resetResult()
+      }
+      return
     }
+    event.preventDefault()
+    if (!pending && !event.repeat) void run(0)
   }
 </script>
 
-<svelte:window onkeydown={shortcut} />
+<header class="app-bar">
+  <div class="identity"><img src={import.meta.env.BASE_URL + 'hubbykit.png'} width="32" height="32" alt="" />HubbyKit</div>
+  <div class="theme-picker" role="group" aria-label="Color theme">
+    <button aria-pressed={theme === 'light'} onclick={() => chooseTheme('light')}>Light</button>
+    <button aria-pressed={theme === 'dark'} onclick={() => chooseTheme('dark')}>Dark</button>
+  </div>
+</header>
 
-<div class="shell" class:navigation-hidden={!navigationOpen}>
-  <header class="app-bar">
-    <div class="app-bar-start">
-      <button class="navigation-toggle" type="button" aria-expanded={navigationOpen}
-        aria-controls="sidebar mobile-tools" aria-label={navigationOpen ? 'Hide tools' : 'Show tools'}
-        title={navigationOpen ? 'Hide tools' : 'Show tools'} onclick={() => navigationOpen = !navigationOpen}>
-        <span class="sidebar-icon" aria-hidden="true"></span>
-      </button>
-      <div class="identity"><img src={import.meta.env.BASE_URL + 'hubbykit.png'} width="26" height="26" alt="" />HubbyKit</div>
-    </div>
-    <div class="theme-picker" role="group" aria-label="Color theme">
-      <button aria-pressed={theme === 'light'} onclick={() => chooseTheme('light')}>Light</button>
-      <button aria-pressed={theme === 'dark'} onclick={() => chooseTheme('dark')}>Dark</button>
-    </div>
-  </header>
+<main>
+  {#if showModules}
+    <section class="library" aria-labelledby="modules-title">
+      <div class="library-heading">
+        <h1 id="modules-title">Modules</h1>
+        <input type="search" placeholder="Find a tool…" aria-label="Find a tool" bind:value={search} />
+      </div>
 
-  <label class="mobile-tools" id="mobile-tools">
-    Tool
-    <select value={selected.id} onchange={(event) => {
-      const tool = tools.find(item => item.id === event.currentTarget.value)
-      if (tool) select(tool)
-    }}>
-      {#each categories as category}
-        <optgroup label={category}>
-          {#each tools.filter(tool => tool.category === category) as tool (tool.id)}
-            <option value={tool.id}>{tool.name}</option>
+      {#if matches.length}
+        <ul class="module-grid">
+          {#each matches as tool (tool.id)}
+            <li>
+              <button class="module-card" id={'module-' + tool.id} onclick={() => openModule(tool)}>
+                <span class="module-icon"><ModuleIcon tool={tool.id} /></span>
+                <span class="module-name">{tool.name}</span>
+                <span class="module-category">{tool.category}</span>
+              </button>
+            </li>
           {/each}
-        </optgroup>
-      {/each}
-    </select>
-  </label>
-
-  <aside class="sidebar" id="sidebar">
-    <label class="search">
-      <input type="search" placeholder="Find a tool…" aria-label="Find a tool" bind:value={search} />
-    </label>
-
-    <nav aria-label="Developer tools">
-      {#each categories as category, index (category)}
-        {@const group = matches.filter(tool => tool.category === category)}
-        {@const expanded = Boolean(query) || !closedGroups.includes(category)}
-        {#if group.length}
-          <div class="nav-group">
-            <h2>
-              {#if query}
-                <span class="group-heading">{category}</span>
-              {:else}
-                <button type="button" class="group-heading" aria-expanded={expanded} aria-controls={'tools-' + index}
-                  onclick={() => toggleGroup(category)}>
-                  <span class="group-chevron" aria-hidden="true"></span>{category}
-                </button>
-              {/if}
-            </h2>
-            <div id={'tools-' + index} hidden={!expanded}>
-              {#each group as tool (tool.id)}
-                <button
-                  class="tool-button"
-                  class:active={selected.id === tool.id}
-                  aria-current={selected.id === tool.id ? 'page' : undefined}
-                  onclick={() => select(tool)}
-                >
-                  {tool.name}
-                </button>
-              {/each}
-            </div>
-          </div>
-        {/if}
-      {/each}
-      {#if !matches.length}<p class="no-matches">No matching tools.</p>{/if}
-    </nav>
-  </aside>
-
-  <main>
+        </ul>
+      {:else}
+        <p class="no-matches" role="status">No matching tools.</p>
+      {/if}
+    </section>
+  {:else}
     <section class="workspace" aria-labelledby="tool-title" aria-busy={pending}>
+      <button class="back-button" disabled={pending} onclick={backToModules}><span aria-hidden="true">←</span> Modules</button>
       <div class="tool-heading">
         <div>
-          <h1 id="tool-title">{selected.name}</h1>
+          <h1 id="tool-title" tabindex="-1">{selected.name}</h1>
           <p>{selected.description}</p>
         </div>
-        <button class="guide-button" type="button" aria-haspopup="dialog" onclick={() => guideDialog.showModal()}>
+        <button class="guide-button" type="button" disabled={pending} aria-haspopup="dialog" onclick={() => guideDialog?.showModal()}>
           Guide
         </button>
       </div>
@@ -218,78 +197,104 @@
         </div>
       </dialog>
 
-      <div class="toolbar">
-        <div class="actions">
-          {#each selected.actions as action, index}
-            <button class:primary={index === 0} disabled={pending} onclick={() => run(index)}>
-              {index === 0 && pending ? 'Working…' : action}
-            </button>
-          {/each}
+      {#if selected.actions.length}
+        <div class="toolbar">
+          <div class="actions">
+            {#each selected.actions as action, index}
+              <button class:primary={index === 0} disabled={pending} onclick={() => run(index)}>
+                {index === 0 && pending ? 'Working…' : action}
+              </button>
+            {/each}
+          </div>
+          {#if selected.options}
+            <select bind:value={option} onchange={resetResult} aria-label="Tool setting">
+              {#each selected.options as label, i}<option value={i}>{label}</option>{/each}
+            </select>
+          {/if}
         </div>
-        {#if selected.options}
-          <select bind:value={option} onchange={resetResult} aria-label="Tool setting">
-            {#each selected.options as label, i}<option value={i}>{label}</option>{/each}
-          </select>
-        {/if}
-      </div>
+      {/if}
 
       <div class="panels">
         <div class="panel">
           <div class="panel-bar">
             <label for="source">{selected.inputLabel ?? 'Input'}</label>
             <div class="panel-actions">
-              {#if selected.example}<button onclick={example}>Example</button>{/if}
-              <button onclick={() => { input = ''; secondary = selected.id === 'mock' ? '5' : ''; resetResult() }}>Clear</button>
+              {#if selected.example}<button disabled={pending && !selected.actions.length} onclick={example}>Example</button>{/if}
+              <button disabled={pending && !selected.actions.length} onclick={() => { input = ''; secondary = selected.id === 'mock' ? '5' : ''; resetResult() }}>Clear</button>
             </div>
           </div>
           {#if selected.id === 'id' || selected.id === 'password'}
             <input class="count-input" id="source" type="text" inputmode="numeric" bind:value={input}
-              oninput={resetResult} placeholder={selected.example} />
+              oninput={resetResult} onkeydown={shortcut} placeholder={selected.example} />
           {:else}
-            <textarea id="source" bind:value={input} oninput={resetResult} spellcheck="false"
+            <textarea id="source" bind:value={input} oninput={resetResult} onkeydown={shortcut} spellcheck="false"
+              readonly={pending && !selected.actions.length}
               placeholder={selected.id === 'json' ? 'Paste your JSON here…' : 'Enter input…'}></textarea>
           {/if}
           {#if selected.secondaryLabel}
             <div class="panel-bar secondary-bar"><label for="secondary">{selected.secondaryLabel}</label></div>
             {#if selected.id === 'mock'}
-              <input class="count-input" id="secondary" type="text" inputmode="numeric" bind:value={secondary} oninput={resetResult} />
+              <input class="count-input" id="secondary" type="text" inputmode="numeric" bind:value={secondary} oninput={resetResult} onkeydown={shortcut} />
             {:else}
-              <textarea id="secondary" bind:value={secondary} oninput={resetResult} spellcheck="false"></textarea>
+              <textarea id="secondary" bind:value={secondary} oninput={resetResult} onkeydown={shortcut} spellcheck="false"></textarea>
             {/if}
           {/if}
         </div>
 
-        <div class="panel">
-          <div class="panel-bar">
-            <span>Output</span>
-            <div class="panel-actions">
-              {#if result?.image}
-                <a href={result.image} download="hubbykit-qr.png">Download PNG</a>
-              {:else}
-                <button disabled={!result} onclick={copy}>{status || 'Copy'}</button>
-              {/if}
-            </div>
+        {#if selected.id === 'markdown-pdf'}
+          <MarkdownOutput {input} bind:pending />
+        {:else if wordCounts}
+          <div class="panel">
+            <div class="panel-bar">Statistics</div>
+            <dl class="word-stats" aria-live="polite">
+              {#each Object.entries(wordCounts) as [label, count]}
+                <div><dt>{label}</dt><dd>{count.toLocaleString()}</dd></div>
+              {/each}
+            </dl>
           </div>
-          {#if error}
-            <div class="error" role="alert">{error}</div>
-          {:else if result?.image}
-            <div class="qr"><img src={result.image} alt="Generated QR code" width="240" height="240" /></div>
-          {:else if result?.diff}
-            <pre class="diff" aria-label="Line differences">{#each result.diff as part}<span class:added={part.added} class:removed={part.removed}>{diffText({ diff: [part] })}</span>{/each}</pre>
-          {:else if result}
-            <textarea aria-label="Output" value={result.text ?? ''} readonly spellcheck="false"></textarea>
-          {:else}
-            <div class="empty">
-              {pending ? 'Processing…' : 'Run the tool to see its output.'}
+        {:else}
+          <div class="panel">
+            <div class="panel-bar">
+              <span>Output</span>
+              <div class="panel-actions">
+                {#if result?.image}
+                  <a href={result.image} download="hubbykit-qr.png">Download PNG</a>
+                {:else}
+                  <button disabled={!result} onclick={copy}>{status || 'Copy'}</button>
+                {/if}
+              </div>
             </div>
-          {/if}
-        </div>
+            {#if error}
+              <div class="error" role="alert">{error}</div>
+            {:else if result?.image}
+              <div class="qr"><img src={result.image} alt="Generated QR code" width="240" height="240" /></div>
+            {:else if result?.diff}
+              <pre class="diff" aria-label="Line differences">{#each result.diff as part}<span class:added={part.added} class:removed={part.removed}>{diffText({ diff: [part] })}</span>{/each}</pre>
+            {:else if result}
+              <textarea aria-label="Output" value={result.text ?? ''} readonly spellcheck="false"></textarea>
+            {:else}
+              <div class="empty">
+                {pending ? 'Processing…' : 'Run the tool to see its output.'}
+              </div>
+            {/if}
+          </div>
+        {/if}
       </div>
 
       <footer>
-        <span><span class="status-dot"></span> Local processing <span class="status-divider">·</span> {input.length.toLocaleString()} characters</span>
-        <span><kbd>Ctrl</kbd> <kbd>Enter</kbd> to run</span>
+        <span>
+          <span class="status-dot"></span> Local processing
+          {#if !wordCounts}<span class="status-divider">·</span> {input.length.toLocaleString()} characters{/if}
+        </span>
+        {#if selected.actions.length}
+          <span>
+            <kbd>Enter</kbd> to run
+            {#if selected.id !== 'id' && selected.id !== 'password'}
+              <span class="status-divider">·</span> <kbd>Ctrl</kbd> <kbd>Enter</kbd> for a new line
+            {/if}
+          </span>
+        {/if}
       </footer>
     </section>
-  </main>
-</div>
+  {/if}
+</main>

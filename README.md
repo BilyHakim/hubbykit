@@ -1,6 +1,6 @@
 # HubbyKit
 
-Toolkit developer offline dengan Svelte, TypeScript, dan Tauri 2. JSON Beautifier terbuka saat aplikasi dimulai.
+Toolkit developer offline dengan Svelte, TypeScript, dan Tauri 2. Aplikasi terbuka di galeri Modules. Pilih kartu untuk membuka tool, lalu gunakan tombol Modules untuk kembali.
 
 ## Menjalankan
 
@@ -18,15 +18,17 @@ Jalankan `npm run tauri build` untuk membuat executable dan installer NSIS di `s
 | Kategori | Tool |
 | --- | --- |
 | Formatters | JSON Beautifier, SQL Formatter, XML / HTML Pretty |
-| Converters | JSON to Go Struct, YAML ↔ JSON, Unix Timestamp |
+| Converters | JSON to Go Struct, YAML ↔ JSON, Markdown to PDF, Unix Timestamp |
 | Encoders / Security | JWT Debugger, Base64, URL Encode, Hash Generator |
 | Generators | UUID / ULID, Mock JSON, QR Code, Password Generator |
-| Text & Testing | Diff Checker, Regex Tester, cURL to Code |
+| Text & Testing | Word Count, Diff Checker, Regex Tester, cURL to Code |
 
 - JSON Beautifier memvalidasi input dan mempertahankan token angka serta string saat format atau minify.
 - SQL Formatter mendukung beberapa dialek. Validasi terhadap skema database tetap dilakukan di database.
 - JWT Debugger menampilkan header, claims, dan signature dalam hex. Verifikasi signature tidak tersedia.
 - Mock JSON menerima objek dengan tipe field `string`, `name`, `email`, `integer`, `boolean`, `date`, atau `uuid`.
 - cURL to Code menghasilkan JavaScript Fetch atau Python Requests dari URL HTTP(S), method, header, body literal, dan opsi redirect. Konversi berjalan offline.
+- Word Count memperbarui jumlah kata, karakter, kalimat, paragraf, dan baris saat teks berubah.
+- Markdown to PDF menampilkan pratinjau Markdown dan halaman PDF A4. Gunakan Download PDF untuk memilih folder dan nama file, atau Copy as PDF untuk menempelkannya di File Explorer. Versi web menyediakan Print / Save PDF melalui browser.
 
 Jalankan `npm run check` untuk pemeriksaan TypeScript dan Svelte, serta `npm test` untuk pengujian tool.

@@ -70,6 +70,15 @@ export const guides: Record<string, readonly string[]> = {
     "Hasil menampilkan teks yang cocok, posisi, dan grup tangkapan. Flag g mencari semua kecocokan. i mengabaikan kapitalisasi. m membuat penanda awal dan akhir berlaku per baris. u memakai aturan Unicode. Opsi gabungan menerapkan semua flag yang ditampilkan. None mencari kecocokan pertama tanpa flag.",
     "Hasil dibatasi hingga 500 kecocokan dan pola yang terlalu lama dihentikan."
   ],
+  "wordcount": [
+    "Ketik atau tempel teks untuk melihat jumlah kata, karakter, kalimat, paragraf, dan baris.",
+    "Baris kosong memisahkan paragraf. Karakter dihitung berdasarkan karakter yang terlihat, termasuk emoji gabungan."
+  ],
+  "markdown-pdf": [
+    "Tempel Markdown dan periksa hasilnya di Markdown Preview.",
+    "Di aplikasi Windows, klik Preview PDF untuk melihat setiap halaman A4. Pilih Download PDF untuk menentukan folder dan nama file, atau gunakan Copy as PDF untuk menempelkannya di File Explorer.",
+    "Untuk gambar offline, gunakan URL data PNG, JPEG, GIF, atau WebP."
+  ],
   "curl": [
     "Tempel satu perintah cURL dengan URL HTTP(S), lalu pilih JavaScript Fetch atau Python Requests.",
     "Convert menghasilkan cuplikan kode dari metode, header, body literal, dan opsi redirect yang didukung. Perintah dan cuplikan tidak dijalankan.",

@@ -57,6 +57,15 @@ export const tools: Tool[] = [
   },
   {
     category: "Converters",
+    id: "markdown-pdf",
+    name: "Markdown to PDF",
+    description: "Preview Markdown and export it as a PDF.",
+    example: "# Project notes\n\nA short document for **HubbyKit**.\n\n## Next steps\n\n1. Review the draft.\n2. Share the PDF.\n\n| Task | Status |\n| --- | --- |\n| Draft | Ready |",
+    actions: [],
+    inputLabel: "Markdown",
+  },
+  {
+    category: "Converters",
     id: "time",
     name: "Unix Timestamp",
     description: "Convert timestamps and ISO dates in UTC.",
@@ -137,6 +146,15 @@ export const tools: Tool[] = [
     actions: ["Generate"],
     options: ["Letters + numbers + symbols","Letters + numbers"],
     inputLabel: "Length (8–256)",
+  },
+  {
+    category: "Text & Testing",
+    id: "wordcount",
+    name: "Word Count",
+    description: "Count words, characters, sentences, paragraphs, and lines as you type.",
+    example: "Halo, HubbyKit! Ini kalimat kedua.\n\nIni paragraf kedua.",
+    actions: [],
+    inputLabel: "Text",
   },
   {
     category: "Text & Testing",
